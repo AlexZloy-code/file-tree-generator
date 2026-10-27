@@ -3,7 +3,32 @@ import * as fs from 'fs';
 import { buildTree } from './treeBuilder';
 import { TreeOptions } from './options';
 
-
+/**
+ * Точка входа расширения. Вызывается VS Code один раз при первой
+ * активации (например, при первом запуске команды
+ * `file-tree-generator.generateTree`).
+ *
+ * Регистрирует команду `file-tree-generator.generateTree`, которая:
+ *  1. Берёт путь по умолчанию из первой папки рабочей области
+ *     (`vscode.workspace.workspaceFolders[0]`), если она открыта.
+ *  2. Запрашивает у пользователя корневую папку через {@link pickDirectory}
+ *     (поле ввода + кнопка «Обзор» с системным диалогом).
+ *  3. Проверяет, что выбранный путь существует и является директорией.
+ *  4. Читает настройки из `Ctrl+,` через
+ *     `vscode.workspace.getConfiguration('file-tree-generator')`
+ *     и собирает объект {@link TreeOptions}. Значение `maxDepth = 0`
+ *     трактуется как «без ограничений» и превращается в `Infinity`.
+ *  5. Вызывает {@link buildTree} и открывает результат в новом
+ *     текстовом документе (`preview: false`, чтобы вкладка не закрывалась
+ *     при переключении).
+ *
+ * Все зарегистрированные команды и другие `Disposable`-объекты
+ * добавляются в `context.subscriptions`, чтобы VS Code корректно
+ * освобождал ресурсы при деактивации расширения.
+ *
+ * @param context Контекст расширения, предоставляемый VS Code.
+ *                Через него регистрируются команды и хранятся подписки.
+ */
 export function activate(context: vscode.ExtensionContext) {
     const generateTree = vscode.commands.registerCommand('file-tree-generator.generateTree', async () => {
         const folders = vscode.workspace.workspaceFolders;
@@ -43,6 +68,38 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(generateTree);
 }
+
+/**
+ * Запрашивает у пользователя путь к директории через `InputBox`
+ * с дополнительной кнопкой «Обзор», открывающей системный диалог
+ * выбора папки.
+ *
+ * Механика:
+ *  - создаётся `InputBox` с предзаполненным `defaultPath`;
+ *  - справа добавляется кнопка с иконкой `folder-opened`;
+ *  - при клике на кнопку вызывается `vscode.window.showOpenDialog`
+ *    с `canSelectFolders: true`, `canSelectFiles: false`;
+ *  - при нажатии `Enter` в поле ввода возвращается введённая строка
+ *    (или `undefined`, если она пустая после `trim`);
+ *  - при закрытии `InputBox` без подтверждения (Esc, потеря фокуса)
+ *    возвращается `undefined`.
+ *
+ * Функция гарантирует, что `Promise` разрешится ровно один раз:
+ * флаг `resolved` защищает от двойного вызова `resolve` при
+ * комбинации «нажали кнопку → выбрали папку → InputBox скрылся».
+ *
+ * @param defaultPath Путь, который будет подставлен в поле ввода по
+ *                    умолчанию. Может быть пустой строкой.
+ * @returns Абсолютный путь к выбранной директории, введённый вручную
+ *          или выбранный в диалоге. `undefined`, если пользователь
+ *          отменил ввод или закрыл `InputBox` без подтверждения.
+ *
+ * @example
+ * const dir = await pickDirectory('/home/sasha/project');
+ * if (dir === undefined) {
+ *     return; // пользователь отменил
+ * }
+ */
 
 async function pickDirectory(defaultPath: string): Promise<string | undefined> {
     const browseButton: vscode.QuickInputButton = {

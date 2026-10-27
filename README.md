@@ -1,71 +1,57 @@
-# file-tree-generator README
+# File Tree Generator
 
-This is the README for your extension "file-tree-generator". After writing up a brief description, we recommend including the following sections.
+Расширение для Visual Studio Code, которое строит текстовое дерево каталогов проекта в виде псевдографики и открывает результат в новой вкладке редактора. Полезно для документации, code review, отчётов и вставки структуры проекта в README.
 
-## Features
+## Возможности
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- Генерация дерева в стиле `tree` (`├──`, `└──`, `│`).
+- Три режима вывода: всё, только папки, только файлы.
+- Учёт или игнорирование скрытых файлов и папок (начинающихся с точки).
+- Ограничение глубины рекурсии.
+- Исключение папок по имени (`node_modules`, `.git`, `dist` и т.п.).
+- Исключение файлов по расширению (`.log`, `.map` и т.п.).
+- Выбор корневой папки.
 
-For example if there is an image subfolder under your extension project workspace:
+## Параметры для расширения File Tree Generator
 
-\!\[feature X\]\(images/feature-x.png\)
+Эти параметры задаются в `Ctrl+,`:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+| Параметр                            | Тип          | По умолчанию                                | Влияние                                  |
+|-------------------------------------|--------------|---------------------------------------------|------------------------------------------|
+| `file-tree-generator.mode`          | `agree_list` | `all`                                       | Что включать в дерево                    |
+| `file-tree-generator.includeHidden` | `boolean`    | `false`                                     | Показывать скрытые файлы/папки           |
+| `file-tree-generator.maxDepth`      | `number`     | `0`                                         | Глубина рекурсии (`0` = без ограничений) |
+| `file-tree-generator.excludedDirs`  | `string[]`   | `["node_modules", ".git", "dist", "build"]` | Какие папки пропускать                   |
+| `file-tree-generator.excludedExts`  | `string[]`   | `[".log", ".map"]`                          | Какие расширения файлов пропускать       |
 
-## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
 
-## Extension Settings
+## Установка
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+<!-- ### Из VSIX
 
-For example:
+1. Скачайте `.vsix`-файл из раздела Releases.
+2. В VS Code откройте палитру команд (`Ctrl+Shift+P`) и выполните `Extensions: Install from VSIX…`.
+3. Выберите скачанный файл. -->
 
-This extension contributes the following settings:
+### Из исходников
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+```bash
+git clone <repo-url>
+cd file-tree-generator
+npm install
+npm run compile
 
-## Known Issues
+Ctrl+F5
+```
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+### Требования
 
-## Release Notes
+ - VS Code 1.66 или новее (используется QuickInputButton и ThemeIcon для кнопки выбора папки).
+ - Node.js 16+ для сборки из исходников.
 
-Users appreciate release notes as you update your extension.
+### Возможные дальнейшие улучшения
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+ - Импорт списка исключений из .gitignore.
+ - Предпросмотр дерева в реальном времени внутри Webview.
+ - Экспорт в Markdown, JSON и CSV.
