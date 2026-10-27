@@ -16,6 +16,10 @@
       {
         "command": "file-tree-generator.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "file-tree-generator.generateTree",
+        "title": "Generate file-tree"
       }
     ]
   },
