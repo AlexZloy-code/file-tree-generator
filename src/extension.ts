@@ -1,83 +1,93 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
+import { buildTree } from './treeBuilder';
+import { TreeOptions } from './options';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+
 export function activate(context: vscode.ExtensionContext) {
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "file-tree-generator" is now active!');
+    const generateTree = vscode.commands.registerCommand('file-tree-generator.generateTree', async () => {
+        const folders = vscode.workspace.workspaceFolders;
+        const defaultPath = folders && folders.length > 0
+            ? folders[0].uri.fsPath
+            : '';
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    
-    const helloWorldCommand = vscode.commands.registerCommand('file-tree-generator.helloWorld', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from file-tree-generator!');
-    });
+        const picked = await pickDirectory(defaultPath);
+        if (picked === undefined) {
+            return; // пользователь отменил
+        }
 
-    const generateTreeCommand = vscode.commands.registerCommand('file-tree-generator.generateTree', async () => {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        const defaultPath = workspaceFolders ? workspaceFolders[0].uri.fsPath : '';
-
-        const targetDirectory = await vscode.window.showInputBox({
-            prompt: 'Введите абсолютный путь к директории или оставьте пустым для текущей папки',
-            value: defaultPath,
-            placeHolder: 'Например: /home/sasha/project'
-        });
-
-        if (targetDirectory === undefined) {
+        if (!fs.existsSync(picked) || !fs.statSync(picked).isDirectory()) {
+            vscode.window.showErrorMessage('Указанный путь не является директорией.');
             return;
         }
 
-        if (!targetDirectory || !fs.existsSync(targetDirectory)) {
-            vscode.window.showErrorMessage('Указанная директория не существует или путь пуст!');
-            return;
-        }
+        const config = vscode.workspace.getConfiguration('file-tree-generator');
+        const rawDepth = config.get<number>('maxDepth', 0);
+        const options: TreeOptions = {
+            mode: config.get<'all' | 'folders-only' | 'files-only'>('mode', 'all'),
+            includeHidden: config.get<boolean>('includeHidden', false),
+            maxDepth: rawDepth === 0 ? Infinity : rawDepth,
+            excludedDirs: config.get<string[]>('excludedDirs', []),
+            excludedExts: config.get<string[]>('excludedExts', [])
+        };
 
         vscode.window.showInformationMessage('Генерация карты директории...');
-        const rootName = path.basename(targetDirectory) || targetDirectory;
-        let treeResult = `${rootName}/\n`;
-        treeResult += buildTree(targetDirectory, '');
+        const tree = buildTree(picked, options);
 
-        const document = await vscode.workspace.openTextDocument({
-            content: treeResult,
+        const doc = await vscode.workspace.openTextDocument({
+            content: tree,
             language: 'text'
         });
-        await vscode.window.showTextDocument(document);
+        await vscode.window.showTextDocument(doc, { preview: false });
     });
 
-    context.subscriptions.push(helloWorldCommand, generateTreeCommand);
+    context.subscriptions.push(generateTree);
 }
 
+async function pickDirectory(defaultPath: string): Promise<string | undefined> {
+    const browseButton: vscode.QuickInputButton = {
+        iconPath: new vscode.ThemeIcon('folder-opened'),
+        tooltip: 'Выбрать папку…'
+    };
 
-function buildTree(currentPath: string, prefix: string): string {
-    let result = '';
+    const input = vscode.window.createInputBox();
+    input.title = 'Корневая папка для дерева';
+    input.prompt = 'Введите путь или нажмите иконку папки справа';
+    input.value = defaultPath;
+    input.buttons = [browseButton];
 
-    try {
-        const items = fs.readdirSync(currentPath);
-        
-        items.forEach((item, index) => {
-            const isLast = index === items.length - 1;
-            const itemPath = path.join(currentPath, item);
-            const isDirectory = fs.statSync(itemPath).isDirectory();
+    return new Promise<string | undefined>(resolve => {
+        let resolved = false;
 
-            const pointer = isLast ? '--- ' : '|-- ';
-            result += `${prefix}${pointer}${item}${isDirectory ? '/' : ''}\n`;
-
-            if (isDirectory) {
-                const nextPrefix = prefix + (isLast ? '    ' : '|   ');
-                result += buildTree(itemPath, nextPrefix);
+        input.onDidTriggerButton(async () => {
+            const uri = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                defaultUri: defaultPath ? vscode.Uri.file(defaultPath) : undefined,
+                openLabel: 'Выбрать эту папку'
+            });
+            if (uri && uri.length > 0) {
+                resolved = true;
+                input.hide();
+                resolve(uri[0].fsPath);
             }
         });
-    } catch (error: any) {
-        result += `${prefix}└── [Ошибка доступа: ${error.message}]\n`;
-    }
 
-    return result;
+        input.onDidAccept(() => {
+            resolved = true;
+            const value = input.value.trim();
+            input.hide();
+            resolve(value.length > 0 ? value : undefined);
+        });
+
+        input.onDidHide(() => {
+            if (!resolved) {
+                resolve(undefined);
+            }
+            input.dispose();
+        });
+
+        input.show();
+    });
 }

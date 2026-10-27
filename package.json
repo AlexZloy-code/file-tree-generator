@@ -2,7 +2,7 @@
   "name": "file-tree-generator",
   "displayName": "file-tree-generator",
   "description": "This is a plugin that helps create a file tree for a directory.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.138.0"
   },
@@ -14,14 +14,44 @@
   "contributes": {
     "commands": [
       {
-        "command": "file-tree-generator.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "file-tree-generator.generateTree",
         "title": "Generate file-tree"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "File Tree Generator",
+      "properties": {
+        "file-tree-generator.mode": {
+          "type": "string",
+          "enum": ["all", "folders-only", "files-only"],
+          "default": "all",
+          "description": "Что включать в дерево: всё, только папки или только файлы."
+        },
+        "file-tree-generator.includeHidden": {
+          "type": "boolean",
+          "default": false,
+          "description": "Показывать скрытые файлы и папки (начинающиеся с точки)."
+        },
+        "file-tree-generator.maxDepth": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Глубина рекурсии. 0 означает без ограничений."
+        },
+        "file-tree-generator.excludedDirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["node_modules", ".git", "dist", "build"],
+          "description": "Имена папок, которые нужно пропускать."
+        },
+        "file-tree-generator.excludedExts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [".log", ".map"],
+          "description": "Расширения файлов, которые нужно пропускать (например, .log, .map)."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
