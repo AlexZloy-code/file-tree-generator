@@ -37,7 +37,7 @@
 ### Из исходников
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/AlexZloy-code/file-tree-generator/tree/master
 cd file-tree-generator
 npm install
 npm run compile
